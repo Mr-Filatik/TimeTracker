@@ -1,0 +1,228 @@
+﻿@page "/timetracker"
+@inject HttpClient Http
+
+<PageTitle>Time Tracker</PageTitle>
+
+<h1>Time Tracker</h1>
+
+<p>Sele @selectedCase?.Id - @draggableCase?.Id Drag : Count @number</p>
+
+@if (selectedCase != null)
+{
+    <h2>Дело в работе:</h2>
+
+    <div class="case-selected"
+         ondragover="event.preventDefault();"
+         ondragstart="event.dataTransfer.setData('', event.target.id);"
+    @ondrop="@(() => HandleDrop(true))"
+    @ondragenter="HandleDragEnter"
+    @ondragleave="HandleDragLeave">
+        <div class="case position-absolute case-selected-color"
+             draggable="true"
+        @ondragstart="@(() => HandleDragStart(selectedCase))"
+        @ondragend="@(() => HandleDragEnd())">
+            HELLO @selectedCase.Title (@selectedCase.Description) - @selectedCase.Time.Hour ч. @selectedCase.Time.Minute м. @selectedCase.Time.Second с.
+        </div>
+        <div class="case case-drop-zone @displaySelectDropZone">
+            <h3>Заменить дело.</h3>
+        </div>
+        <div class="case case-drop-apply @displaySelectDropApply">
+            @if (draggableCase != null)
+            {
+                <h3>Приступить к новому делу "@draggableCase.Title".</h3>
+            }
+            else
+            {
+                <h3>Приступить к новому делу.</h3>
+            }
+        </div>
+    </div>
+    <div class="case-indent"></div>
+}
+else
+{
+    <h2>Дело в работе:</h2>
+
+    <div class="case-selected"
+         ondragover="event.preventDefault();"
+         ondragstart="event.dataTransfer.setData('', event.target.id);"
+    @ondrop="@(() => HandleDrop(true))"
+    @ondragenter="HandleDragEnter"
+    @ondragleave="HandleDragLeave">
+        <div class="case case-drop-zone display-block">
+            <h3>В данный момент дел в работе нет.</h3>
+        </div>
+        <div class="case case-drop-apply @displaySelectDropApply">
+            @if (draggableCase != null)
+            {
+                <h3>Приступить к делу "@draggableCase.Title".</h3>
+            }
+            else
+            {
+                <h3>Приступить к делу.</h3>
+            }
+        </div>
+    </div>
+    <div class="case-indent"></div>
+}
+
+<h2>Все мои дела: ПОИСК</h2>
+
+@if (cases != null)
+{
+    <div style="position: relative;">
+        <div class="case-list"
+             ondragover="event.preventDefault();"
+             ondragstart="event.dataTransfer.setData('', event.target.id);"
+        @ondrop="@(() => HandleDrop(false))"
+        @ondragenter="HandleDragEnter"
+        @ondragleave="HandleDragLeave">
+            @foreach (var item in cases)
+            {
+                <div class="case position-relative case-list-color"
+                     draggable="true"
+                @ondragstart="@(() => HandleDragStart(item))"
+                @ondragend="@(() => HandleDragEnd())">
+                    HELLO @item.Title (@item.Description) - @item.Time.Hour ч. @item.Time.Minute м. @item.Time.Second с.
+                </div>
+                <div class="case-indent"></div>
+            }
+        </div>
+        <div class="case-list case-drop-zone @displayListDropZone">
+            <h3>В данный момент дел в работе нет.</h3>
+        </div>
+        <div class="case-list case-drop-apply @displayListDropApply">
+            @if (draggableCase != null)
+            {
+                <h3>Приступить к делу "@draggableCase.Title".</h3>
+            }
+            else
+            {
+                <h3>Приступить к делу.</h3>
+            }
+        </div>
+    </div>
+}
+else
+{
+
+}
+
+@code {
+    private List<Case>? cases;
+    private Case? selectedCase = null;
+    private Case? draggableCase = null;
+
+    private string displayListDropZone = "display-none";
+    private string displayListDropApply = "display-none";
+
+    private string displaySelectDropZone = "display-none";
+    private string displaySelectDropApply = "display-none";
+    private int number = 0;
+
+    private System.Threading.Timer? timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        cases = new List<Case>()
+        {
+            new Case() { Id = 1.ToString(), Title = "Задача 15010", Description = "Задача связана с восстановлением пароля в КЦ.", Time = new Time() },
+            new Case() { Id = 2.ToString(), Title = "Обед", Description = "Время обеда и не только.", Time = new Time() },
+            new Case() { Id = 3.ToString(), Title = "Завтрак", Description = "Время завтрака и не только.", Time = new Time() }
+        };
+
+        timer = new System.Threading.Timer(async (object? stateInfo) =>
+        {
+            if (selectedCase != null)
+            {
+                selectedCase.Time.Second++;
+                await InvokeAsync(StateHasChanged);
+            }
+        }, new System.Threading.AutoResetEvent(false), 1000, 1000);
+    }
+
+    private void HandleDragStart(Case? item)
+    {
+        draggableCase = item;
+
+        if (selectedCase != null)
+        {
+            if (draggableCase != selectedCase)
+            {
+                displaySelectDropZone = "display-block";
+            }
+            else
+            {
+                displayListDropZone = "display-block";
+            }
+        }
+    }
+
+    private void HandleDragEnd()
+    {
+        draggableCase = null;
+
+        number = 0;
+
+        displayListDropZone = "display-none";
+        displayListDropApply = "display-none";
+        displaySelectDropZone = "display-none";
+        displaySelectDropApply = "display-none";
+    }
+
+    private void HandleDragEnter()
+    {
+        number++;
+
+        if (draggableCase != selectedCase)
+        {
+            displaySelectDropApply = "display-block";
+        }
+        else
+        {
+            displayListDropApply = "display-block";
+        }
+    }
+
+    private void HandleDragLeave()
+    {
+        number--;
+        if (number == 0)
+        {
+            if (draggableCase != selectedCase)
+            {
+                displaySelectDropApply = "display-none";
+            }
+            else
+            {
+                displayListDropApply = "display-none";
+            }
+        }
+    }
+
+    private async Task HandleDrop(bool isSelect)
+    {
+        number = 0;
+        displayListDropZone = "display-none";
+        displayListDropApply = "display-none";
+        displaySelectDropZone = "display-none";
+        displaySelectDropApply = "display-none";
+
+        if (isSelect && selectedCase != null)
+        {
+            cases?.Add(selectedCase);
+        }
+
+        if (isSelect && draggableCase != null)
+        {
+            selectedCase = draggableCase;
+            cases?.Remove(selectedCase);
+        }
+
+        if (!isSelect && draggableCase != null)
+        {
+            selectedCase = null;
+            cases?.Add(draggableCase);
+        }
+    }
+}
